@@ -118,13 +118,19 @@ class TensorFlowMNISTClassifier(MNISTClassificationModel):
         ##########################
         X_train = X_train.reshape(len(X_train), 28*28)
         Y_train = Y_train.reshape(len(Y_train), 28*28)
-        raise NotImplementedError
+        # TODO
+
+        
+
+
+        with tf.GradientTape() as tape:
+            raise NotImplementedError
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Network forward pass, for an input dataset X, return the output predictions"""
-        ##########################
-        ##### YOUR CODE HERE #####
-        ##########################
+
+        # Simply return a forward pass
+
         return self.neural_net_model(X)
 
 

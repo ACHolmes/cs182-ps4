@@ -427,6 +427,17 @@ if __name__ == "__main__":
     # x_1 = petal_length and x_2 = petal_width and plot the resulting decision boundary. Be sure to label your plot axes, include a legend 
     # and a title. Make sure to include your plot in your PDF write-up. 
     
+    colors = ['blue' if term==0 else 'orange' for term in y ]
+    plt.scatter(x=X["petal_length"], y=X["petal_width"], color=colors)
+    plt.xlabel("Petal length")
+    plt.ylabel("Petal width")
+    plt.savefig('flower.png')
+    plt.show()
+    
+
+    logisticRegr = LogisticRegression()
+    logisticRegr.fit(X, y)
+    
     ##########################
     #### YOUR CODE HERE ####
     ##########################
@@ -440,6 +451,9 @@ if __name__ == "__main__":
     # Part C: What is the in-sample accuracy of your model at distinguishing between these 2 plant types? What is the baseline accuracy 
     # that you'd achieve by simply choosing the majority class? Does this model provide a substantial improvement to that baseline?
     # (include this in your PDF)
+    score = logisticRegr.score(X, y)
+    print(f"Logistic regression in-sample accuracy: {score}")
+
     
     ##########################
     #### YOUR CODE HERE ####
@@ -491,16 +505,21 @@ def run_perceptron_algo(X:pd.DataFrame, y:np.array, weight_vector:np.array, max_
     """Takes in a dataset denoted by X and y, with a starting weight vector and runs the perceptron algorithm until convergence
     or a max iteration threshold has been exceeded, returns the fitted weight vector and the number of iterations required"""
     iterations=0
-    convergence = False
     # Hint: Call the perceptron_iter() helper function from above
-    while (iterations < max_iter and not(convergence)):
+    while (iterations < max_iter):
         any_change = False
-        for i in range(len(X)):
-            weight_vector, change = perceptron_iter(X[i], y[i], weight_vector)
+        iterations_maxed = False
+        for i in range(len(y)):
+            iterations += 1
+            weight_vector, change = perceptron_iter(X.iloc[i], y[i], weight_vector)
             if change:
                 any_change = True
-            iterations += 1
-        if not(any_change):
+                break
+            if not(iterations < max_iter):
+                iterations_maxed = True
+                break
+            
+        if not(any_change) or iterations_maxed:
             break
     
     return weight_vector, iterations

@@ -354,7 +354,11 @@ if __name__ == "__main__":
     print(f"Mean of Episode Rewards: {mean_val:.2f}, Variance of Episode Rewards: {var_val:.2f}, Best Episode Reward: {max_val}")
     
     import matplotlib.pyplot as plt
-
+    
+    ##########################
+    ##### YOUR CODE HERE #####
+    ##########################
+    print("Need to print graph here!")
     
     
     ### Part 4 - Model Free Q-Learning ###
@@ -364,9 +368,13 @@ if __name__ == "__main__":
     print("Testing Q-Learning...")
     sleep(1)
     my_policy = QLearning(env, gamma=0.9, epsilon=0.01) # Instanciate a new class object with the Q learning methods
-    print(my_policy)
+    
     ### Part 5 ###
     
+    qmean, qvar, qbest = my_policy.compute_episode_rewards()
+    print(f"Mean of Episode Rewards: {qmean:.2f}, Variance of Episode Rewards: {qvar:.2f}, Best Episode Reward: {qbest}")
+  
+
     # Plot the mean returns over 100 episodes of the Q-learning agent that acts solely based on max-Q values after 
     # every 1000 episodes (this should be done by using the compute_episode_rewards function). Use the parameters 
     # gamma=0.9, epsilon=0.01. How does your Q-learning agent compare to the value-iteration agent following the 
@@ -375,7 +383,6 @@ if __name__ == "__main__":
     ##########################
     ##### YOUR CODE HERE #####
     ##########################
-    raise NotImplementedError
     
     
 
@@ -470,12 +477,13 @@ weight_vector = np.array([1,1,0]) # In the form of (x0, x1, x2)
 def perceptron_iter(X:pd.Series, y:float, weight_vector:np.array)->Tuple[np.array,bool]:
     """Takes in an X pd.Series representing the feature vector for 1 obs, a y value of that obs, and a weight vector. Performs 
     1 iteration of the perceptron algorithm to update the weight vector using this data point from the broader dataset"""
+    
     change=False # Also return a boolean value indicating if the weight vector has been changed from input to output
 
-    ##########################
-    ##### YOUR CODE HERE #####
-    ##########################
-    raise NotImplementedError
+    y_hat = 1 if np.dot(weight_vector, X) >= 0 else -1
+    if y_hat != y:
+        change = True
+        weight_vector = weight_vector + y * X
     
     return weight_vector, change
 
@@ -483,13 +491,17 @@ def run_perceptron_algo(X:pd.DataFrame, y:np.array, weight_vector:np.array, max_
     """Takes in a dataset denoted by X and y, with a starting weight vector and runs the perceptron algorithm until convergence
     or a max iteration threshold has been exceeded, returns the fitted weight vector and the number of iterations required"""
     iterations=0
-    
+    convergence = False
     # Hint: Call the perceptron_iter() helper function from above
-    
-    ##########################
-    ##### YOUR CODE HERE #####
-    ##########################
-    raise NotImplementedError
+    while (iterations < max_iter and not(convergence)):
+        any_change = False
+        for i in range(len(X)):
+            weight_vector, change = perceptron_iter(X[i], y[i], weight_vector)
+            if change:
+                any_change = True
+            iterations += 1
+        if not(any_change):
+            break
     
     return weight_vector, iterations
 

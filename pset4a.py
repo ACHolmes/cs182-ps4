@@ -21,7 +21,7 @@ Due November 28, 2022 at 11:59pm
 ### Package Imports ###
 from os import system
 from time import sleep
-import gym
+import gym 
 import numpy as np
 ### Package Imports ###
 
@@ -33,7 +33,7 @@ import numpy as np
 # parameter is_slippery is set to False, so every action leads to a deterministic tile. When is_slippery is set to True, the 
 # movement direction of the agent is uncertain. In particular, if an agent chooses to go in one direction, there is a 1/3 
 # probability the agent goes in the intended direction and a 1/3 probability that the agent goes in each of the directions that 
-# are perpendicular to the intfnded direction. If an agent is on the edge of the map and attempts to move off the map, it simply 
+# are perpendicular to the intended direction. If an agent is on the edge of the map and attempts to move off the map, it simply 
 # stays in place.
 
 # Part 2: Implement value iteration in by filling out the method value_iteration within the class DynamicProgramming. You may find
@@ -54,19 +54,19 @@ import numpy as np
 
 # Do not use any external libraries other than the ones that have already been imported above.
 
+# ------------------------- #
+#----- SAMPLE SOLUTION -----#
+# ------------------------- #
 
 State = int
 Action = int
-
-# NOTE: When testing locally with the `display=True` option
-# use `cls` if you are on a Windows machine or `clear` oif you are on an Apple machine.
 
 class DynamicProgramming:
     """
     Write your algorithms for Policy Iteration and Value Iteration in the appropriate functions below.
     """
-        
-    def __init__(self, env, gamma=0.9, epsilon=0.1):
+
+    def __init__(self, env, gamma=0.95, epsilon=0.001):
         '''
         Initialize policy, environment, value table (V), policy (policy), and transition matrix (P)
         '''
@@ -75,26 +75,23 @@ class DynamicProgramming:
         self.num_actions = env.action_space.n
         self.policy = self.create_initial_policy()
         self.V = np.zeros(self.num_states) # Vector of estimated utilities for each state, states are numbered 0-15, initialized at zero
-        self.P = self.env.P # Dict of a Dict of list of tuples. Outer dict keys = states, 0-15, index into a state, you get a dict of 4 
-        # actions that can be performed, for each action we have a list of possiable states that you can end up in, then it's a tuple that 
-        # tells us what prob of ending up in each of those states, the state indexer, the reward of doing that, finally a boolean indicator 
-        # of if its a goal state or note
-        # print(self.P)
+        self.P = self.env.P # Dict of a Dict of list of tuples. Outer dict keys = states, 0-15, index into a state, you get a dict of 4 actions that can be performed, for each action we have
+        # a list of possiable states that you can end up in, then it's a tuple that tells us what prob of ending up in each of those states, the state indexer, the reward of doing that, finally
+        # a boolean indicator of if its a terminal state or not
         self.gamma = gamma # Discount rate
         self.epsilon = epsilon # Convergence parameter
-        for act, transitions in self.P[13].items():
-            for transition in transitions:
-                print(transition)
-            print("here")
-        R = {}
-        for state in range(self.num_states):
-            for _, transitions in self.P[state].items():
-                for transition in transitions:
-                    # Setting rewards for goal states, else R(s) = 0
-                    R[transition[1]] = 1 if transition[3] else 0
-        self.R = R
-
-
+        self.rewards = {state:0 for state in range(self.num_states)} # The reward function R(s)
+        self.terminal_states = {state:False for state in range(self.num_states)} # Returns a True or False indicating if the game state provided 
+        # is in a terminal state (i.e. no further actions can be taken)
+        
+        for state,actions in env.P.items():
+            for action,action_data in actions.items():
+                prob, state, r, is_end = action_data[0]
+                if is_end==True:
+                    self.terminal_states[state] = True # Record if terminal state (ice hole or goal)
+                    if r == 1:
+                        self.rewards[state] = 1 # If a goal state, then R(s) = 1, else R(s) left at 0
+                
     def create_initial_policy(self):
         '''
         A policy is a numpy array of length self.num_states where
@@ -109,22 +106,28 @@ class DynamicProgramming:
     def updated_action_values(self, state: State) -> np.ndarray:
         """
         This is a useful helper function for implementing value_iteration.
-        Given a state (given by index), returns a numpy array
-
-            [Q[s, a_1], Q[s, a_2], ..., Q[s, a_n]]
-
-        based on current value function self.V.
+        Given a state (given by index), returns a numpy array of entries
+        
+        Z_i = SUM[p(s'|s,a_i)*U(s')] over all s' for action a_i
+        
+        i.e. return a np.array: [Z_1, ..., Z_n]
+        
+        based on current value function self.V for U(s')
         """
+        ##########################
+        ##### YOUR CODE HERE #####
+        ##########################
+
         result = []
         
+
         for act, transitions in self.P[state].items():
+            accum = 0
             for transition in transitions:
-                accum = 0
-                # print(transition[0], transition[1], self.V[transition[1]])
                 accum += transition[0] * self.V[transition[1]]
-                # print(accum)
             result.append((act, accum))
-        return result
+        return np.array(result)
+    
 
     def value_iteration(self):
         """
@@ -134,25 +137,20 @@ class DynamicProgramming:
         the optimal policy, where policies are encoded as indicated in the `create_initial_policy` docstring.
         """
         stop_delta = (self.epsilon * (1 - self.gamma)) / self.gamma
-        print("STOP DELTA")
-        print(stop_delta)
         iterations = 0
         while(True):
             # Keep updating states until hit stopping condition
             max_delta = 0
             for state in range(self.num_states):
                 prev = self.V[state]
-                if self.R[state] == 1:
+                if self.rewards[state] == 1:
                     self.V[state] = 1
                 else:
                     updated_vals = [val[1] for val in self.updated_action_values(state)]
-                    print(updated_vals)
-                    self.V[state] = self.R[state] + self.gamma * max(updated_vals)
-                    print(self.V[state])
+                    self.V[state] = self.rewards[state] + self.gamma * max(updated_vals)
                 max_delta = max(max_delta, abs(self.V[state] - prev))
             iterations += 1
             if max_delta < stop_delta:
-                print(max_delta)
                 print(f"Iterations: {iterations}")
                 break
         # Now time to populate policy
@@ -166,7 +164,6 @@ class DynamicProgramming:
                     best_act = act
 
             self.policy[state] = best_act
-        print(self.V)
         return
 
     def play_game(self, display=False):
@@ -190,9 +187,14 @@ class DynamicProgramming:
 
             # find next state
             action = self.policy[curr_state]
-            curr_state, reward, finished, info = self.env.step(action)
+            try:
+                new_state, reward, finished, info = self.env.step(action)
+            except:
+                new_state, reward, finished, info, _ = self.env.step(action)
+            reward = self.rewards[new_state] # Rewards are realized by entering a new state
             total_reward += reward
-            episodes.append([curr_state, action, reward])
+            episodes.append([new_state, action, reward])
+            curr_state = new_state # Set the current state equal to the new state for the next while loop iteration
 
         # display end result
         if display:
@@ -215,9 +217,15 @@ class DynamicProgramming:
             curr_state = self.env.s
             while not finished and num_steps < step_limit:
                 action = self.policy[curr_state]
-                curr_state, reward, finished, info = self.env.step(action)
+                try:
+                    new_state, reward, finished, info = self.env.step(action)
+                except:
+                    new_state, reward, finished, info, _ = self.env.step(action)
+                reward = self.rewards[new_state]
                 total_rewards[episode] += reward
                 num_steps += 1
+                curr_state = new_state # Set the current state equal to the new state for the next while loop iteration
+                
 
             if reward != 0:
                 # If the agent falls into a hole and gets a reward of zero, then record that as zero (already the value of the array)
@@ -234,7 +242,6 @@ class DynamicProgramming:
         mean, var, best, steps_array = self.compute_episode_rewards(num_episodes=num_episodes, step_limit=step_limit)
         print(f"Mean of Episode Rewards: {mean:.2f}, Variance of Episode Rewards: {var:.2f}, Best Episode Reward: {best}")
 
-
 # Model free reinforcement learning
 class QLearning:
     """
@@ -249,34 +256,42 @@ class QLearning:
         self.num_states = env.observation_space.n
         self.num_actions = env.action_space.n 
         self.Q = np.zeros((self.num_states, self.num_actions)) # A 2d-array of states and the values of each action
-        self.state_action_counter = np.zeros((self.num_states, self.num_actions)) # Keeps track of k_sa
+        self.state_action_counter = np.zeros((self.num_states, self.num_actions))   # keeps track of k_sa
         self.gamma = gamma # Discount rate
         self.epsilon = epsilon # Exploration rate
+        self.rewards = {state:0 for state in range(self.num_states)} # The reward function R(s)
+        self.terminal_states = {state:False for state in range(self.num_states)} # Returns a True or False indicating if the game state provided 
+        # is in a terminal state (i.e. no further actions can be taken)
+        
+        for state,actions in env.P.items():
+            for action,action_data in actions.items():
+                prob, state, r, is_end = action_data[0]
+                if is_end==True:
+                    self.terminal_states[state] = True # Record if terminal state (ice hole or goal)
+                    if r == 1:
+                        self.rewards[state] = 1 # If a goal state, then R(s) = 1, else R(s) left at 0
+
 
     def choose_action(self, state: State) -> Action:
         """
         Returns action based on Q-values using the epsilon-greedy exploration strategy
         """
+        ##########################
+        ##### YOUR CODE HERE #####
+        ##########################
         # If we get something under our explore rate, we explore
-        if np.random.rand(1) < self.epsilon:
-            return int(np.random.rand(self.num_actions))
+        if np.random.random() < self.epsilon:
+            return np.random.randint(0, self.num_actions)
         # Else return optimal
-        best_val = 0
-        best_act = 0
-        for act in range(self.num_actions):
-            if self.Q[state][act] > best_val:
-                best_val = self.Q[state][act]
-                best_act = act
-        return best_act
+        return np.random.choice(np.flatnonzero(self.Q[state] == self.Q[state].max()))
 
-              
     def q_learning(self, num_episodes=10000, interval=1000, display=False, step_limit=10000):
         """
         Implement the tabular update for the table of Q-values, stored in self.Q
+
         Boilerplate code of running several episodes and retrieving the (s, a, r, s') transitions has already been done
         for you.
         """
-
         mean_returns = []
         for e in range(1, num_episodes+1):
             self.env.reset()
@@ -291,16 +306,25 @@ class QLearning:
                     system('cls')
                     self.env.render()
                     sleep(1)
-
                 action = self.choose_action(curr_state)
-                next_state, reward, finished, info = self.env.step(action)
-
-                # Update the state_action_counter
-                self.state_action_counter[curr_state][action] += 1
+                try:
+                    next_state, reward, finished, info = self.env.step(action)
+                except:
+                    next_state, reward, finished, info, _ = self.env.step(action)
                 
+                reward = self.rewards[next_state]
+                
+                # Update the state_action_counter
+                ##########################
+                ##### YOUR CODE HERE #####
+                ##########################
+                
+                self.state_action_counter[curr_state][action] += 1
+
                 # Update Q values. Use the alpha schedule given here.
                 alpha = min(0.1, 10 / self.state_action_counter[curr_state][action] ** 0.8)
                 
+                # Q-learning update rule
                 self.Q[curr_state][action] = (1 - alpha) * self.Q[curr_state][action] + alpha * (reward + self.gamma * max(self.Q[next_state]))
                 
                 num_steps += 1
@@ -311,6 +335,8 @@ class QLearning:
                 print(str(e)+"/"+str(num_episodes),end=" ")
                 mean, var, best = self.compute_episode_rewards(num_episodes=100)
                 mean_returns.append(mean)
+
+        return mean_returns
 
     # averages rewards over a number of episodes
     def compute_episode_rewards(self, num_episodes=100, step_limit=1000):
@@ -326,10 +352,14 @@ class QLearning:
             while not finished and num_steps < step_limit:
                 best_actions = np.argwhere(self.Q[curr_state] == np.amax(self.Q[curr_state])).flatten()
                 action = np.random.choice(best_actions)
-                curr_state, reward, finished, info = self.env.step(action)
+                try:
+                    next_state, reward, finished, info = self.env.step(action)
+                except:
+                    next_state, reward, finished, info, _ = self.env.step(action)
+                reward = self.rewards[next_state]
                 total_rewards[episode] += reward
                 num_steps += 1
-
+                curr_state = next_state
         mean, var, best = np.mean(total_rewards), np.var(total_rewards), np.max(total_rewards)
         print(f"Mean of Episode Rewards: {mean:.2f}, Variance of Episode Rewards: {var:.2f}, Best Episode Reward: {best}")
         return mean, var, best
@@ -355,10 +385,13 @@ if __name__ == "__main__":
     
     import matplotlib.pyplot as plt
     
-    ##########################
-    ##### YOUR CODE HERE #####
-    ##########################
-    print("Need to print graph here!")
+    # Plotting histogram!
+    plt.hist(num_steps_array, bins=30)  
+    plt.ylabel('Occurences')
+    plt.xlabel('Number of steps');
+    plt.savefig("2.3histogram.png")
+    plt.show()
+
     
     
     ### Part 4 - Model Free Q-Learning ###
@@ -366,25 +399,26 @@ if __name__ == "__main__":
     env.reset()
 
     print("Testing Q-Learning...")
-    sleep(1)
     my_policy = QLearning(env, gamma=0.9, epsilon=0.01) # Instanciate a new class object with the Q learning methods
+    mean_returns = my_policy.q_learning() # Iterate to derive the final policy
+    
     
     ### Part 5 ###
-    
-    qmean, qvar, qbest = my_policy.compute_episode_rewards()
-    print(f"Mean of Episode Rewards: {qmean:.2f}, Variance of Episode Rewards: {qvar:.2f}, Best Episode Reward: {qbest}")
-  
 
     # Plot the mean returns over 100 episodes of the Q-learning agent that acts solely based on max-Q values after 
     # every 1000 episodes (this should be done by using the compute_episode_rewards function). Use the parameters 
     # gamma=0.9, epsilon=0.01. How does your Q-learning agent compare to the value-iteration agent following the 
     # policy derived from part 3?
-    
-    ##########################
-    ##### YOUR CODE HERE #####
-    ##########################
-    
-    
+
+    plt.scatter(x = [i for i in range(10)], y = mean_returns)
+    plt.xlabel("Number of episodes (1000s)")
+    plt.ylabel("Mean returns over 100 episodes")
+    plt.savefig("2.5plot.png")
+    plt.show()
+
+    qmean, qvar, qbest = my_policy.compute_episode_rewards()
+    print(f"Mean of Episode Rewards: {qmean:.2f}, Variance of Episode Rewards: {qvar:.2f}, Best Episode Reward: {qbest}")
+
 
 #####################################
 # Question 4.1: Logistic Regression #
@@ -427,26 +461,32 @@ if __name__ == "__main__":
     # x_1 = petal_length and x_2 = petal_width and plot the resulting decision boundary. Be sure to label your plot axes, include a legend 
     # and a title. Make sure to include your plot in your PDF write-up. 
     
-    colors = ['blue' if term==0 else 'orange' for term in y ]
-    plt.scatter(x=X["petal_length"], y=X["petal_width"], color=colors)
+    cat0 = len(list(filter(lambda x: x == 1, y)))
+    cat1 = len(y) - cat0
+    print("LENGTH OF CATEGORIES")
+    print(cat0, cat1)
+
+    colors = ['blue' if term==0 else 'orange' for term in y]
+    scatter = plt.scatter(x=X["petal_length"], y=X["petal_width"], color=colors)
     plt.xlabel("Petal length")
     plt.ylabel("Petal width")
+
+    # TODO: Fix legend
+    plt.legend(handles=colors, 
+           labels=["Category 0", "Category 1"],
+           title="species")
+    plt.title("Iris dataset visualization")
     plt.savefig('flower.png')
     plt.show()
     
 
-    logisticRegr = LogisticRegression()
+    logisticRegr = LogisticRegression(penalty="none")
     logisticRegr.fit(X, y)
-    
-    ##########################
-    #### YOUR CODE HERE ####
-    ##########################
     
     # Part B: What are the estimated coefficients and intercept? (include this in your PDF)
     
-    ##########################
-    #### YOUR CODE HERE ####
-    ##########################
+    # Printing coefficients
+    print(logisticRegr.coef_, logisticRegr.intercept_)
     
     # Part C: What is the in-sample accuracy of your model at distinguishing between these 2 plant types? What is the baseline accuracy 
     # that you'd achieve by simply choosing the majority class? Does this model provide a substantial improvement to that baseline?
@@ -455,9 +495,6 @@ if __name__ == "__main__":
     print(f"Logistic regression in-sample accuracy: {score}")
 
     
-    ##########################
-    #### YOUR CODE HERE ####
-    ##########################
 
 
 
@@ -491,7 +528,11 @@ weight_vector = np.array([1,1,0]) # In the form of (x0, x1, x2)
 def perceptron_iter(X:pd.Series, y:float, weight_vector:np.array)->Tuple[np.array,bool]:
     """Takes in an X pd.Series representing the feature vector for 1 obs, a y value of that obs, and a weight vector. Performs 
     1 iteration of the perceptron algorithm to update the weight vector using this data point from the broader dataset"""
-    
+    change=False # Also return a boolean value indicating if the weight vector has been changed from input to output
+
+    ##########################
+    ##### YOUR CODE HERE #####
+    ##########################
     change=False # Also return a boolean value indicating if the weight vector has been changed from input to output
 
     y_hat = 1 if np.dot(weight_vector, X) >= 0 else -1
@@ -500,6 +541,7 @@ def perceptron_iter(X:pd.Series, y:float, weight_vector:np.array)->Tuple[np.arra
         weight_vector = weight_vector + y * X
     
     return weight_vector, change
+    
 
 def run_perceptron_algo(X:pd.DataFrame, y:np.array, weight_vector:np.array, max_iter:int=1000)->Tuple[np.array,int]:
     """Takes in a dataset denoted by X and y, with a starting weight vector and runs the perceptron algorithm until convergence
@@ -508,18 +550,13 @@ def run_perceptron_algo(X:pd.DataFrame, y:np.array, weight_vector:np.array, max_
     # Hint: Call the perceptron_iter() helper function from above
     while (iterations < max_iter):
         any_change = False
-        iterations_maxed = False
+        iterations += 1
         for i in range(len(y)):
-            iterations += 1
             weight_vector, change = perceptron_iter(X.iloc[i], y[i], weight_vector)
             if change:
                 any_change = True
-                break
-            if not(iterations < max_iter):
-                iterations_maxed = True
-                break
             
-        if not(any_change) or iterations_maxed:
+        if not(any_change):
             break
     
     return weight_vector, iterations
